@@ -6,15 +6,15 @@ format: pdf
 
 # Introduction
 
+Free cash flow generation - or the amount of cash a company generates after accounting for the cash outflows needed to maintain or expand its asset base - is generally seen as a hallmark for a successful company, with value investor William Thorndike commenting "cash flow, not reported earnings, is what determines long-term value." Free cash flow (from here on donned FCF) allows management to reinvest in their business, reduce debt, pay dividends, or establish share buybacks, green flags for investors. In this research report, I seek to establish whether there is an association between free cash flow growth and equity returns shortly following, over various time horizons. I also hope to explore whether this effect is strengthened by whether investors value this growth coming from the top or bottom line (such as sales growth or cost cutting), whether the company has reported quality earnings (as opposed to manipulated figures), and whether the company has improved its liquidity position, or its ability to meet short-term and long-term obligations.
+
+The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance. I have chosen a selection of variables from this dataset, using industry-adjusted leading and lagging returns over multiple time horizons as my response and using Q/Q growth in revenue, free cash flow, net income, current ratio, and quick ratio, and earnings quality as measured by operating cash flow divided by net income.
+
+This dataset consists of quarterly observations. While this might initially seem like a potential violation of independence, my analysis shows a low correlation between the next 10-day return after one quarter is reported and the return from the previous quarter. This low correlation indicates that, functionally, each quarter we are effectively analyzing information about an entirely different company, which has made independent decisions from the previous quarter. This makes sense—if this principle did not hold, simply investing in companies that had previously performed well would be a straightforward and successful strategy.
+
 # Read Data and Import Libraries
 
 ```{r}
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install("rhdf5")
-library(rhdf5)
-
-file_path <- "C:/QuantLab/raw_data/snapshot/ind_returns.hdf"
-ind_returns <- h5read(file_path)
+fcf_data <- read.csv("C:/Users/paley/OneDrive/Desktop/STA210/fcf_returns.csv")
 ```
 
