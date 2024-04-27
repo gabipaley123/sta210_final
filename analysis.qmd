@@ -38,6 +38,7 @@ fcf_data_filtered <- fcf_data |>
 ```
 # Initial Observations and EDA
 
+In my initial analysis, I explore the distribution of FCF growth, focusing on eliminating extreme values caused by zeros, minimal prior-period FCF, and accounting irregularities. By bounding my histogram by the 1st and 99th percentiles, the data reveals a tendency for companies to experience declines in FCF rather than gains. This observation aligns with expectations, as achieving growth in FCF typically reflects effective management, a quality less commonly observed than inefficiency.
 
 ```{r}
 library(ggplot2)
@@ -45,28 +46,44 @@ library(ggplot2)
 # Histogram of Free Cash Flow Growth with Quantile-based Limits
 ggplot(fcf_data_filtered, aes(x = fcf_growth)) +
   geom_histogram(bins = 30, fill = "blue", color = "black") +
-  scale_x_continuous(limits = c(quantile(fcf_data_filtered$fcf_growth, 0.10, na.rm = TRUE), 
-                                quantile(fcf_data_filtered$fcf_growth, 0.90, na.rm = TRUE))) +
+  scale_x_continuous(limits = c(quantile(fcf_data_filtered$fcf_growth, 0.01, na.rm = TRUE), 
+                                quantile(fcf_data_filtered$fcf_growth, 0.99, na.rm = TRUE))) +
   theme_minimal() +
   labs(title = "Distribution of Free Cash Flow Growth", x = "Free Cash Flow Growth", y = "Frequency")
 
 ```
 
-```{r}
-
-# Histogram of Free Cash Flow Growth with Quantile-based Limits
-ggplot(fcf_data_filtered, aes(x = current_ratio_change)) +
-  geom_histogram(bins = 30, fill = "blue", color = "black") +
-  scale_x_continuous(limits = c(quantile(fcf_data_filtered$fcf_growth, 0.2, na.rm = TRUE), 
-                                quantile(fcf_data_filtered$fcf_growth, 0.8, na.rm = TRUE))) +
-  theme_minimal() +
-  labs(title = "Distribution of Free Cash Flow Growth", x = "Free Cash Flow Growth", y = "Frequency")
-```
+I viewed the distribution of the other variables using histograms and coverage plots for NA values, but for the purpose of concision, I have included five number summaries for each of the dataset columns. 
 
 ```{r}
 summary(fcf_data_filtered)
 ```
-```{r}
+Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/filing issues result in reasonable and interpretable predictor variables. 
 
+The distribution of industry-adjusted returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). I have included a histogram of industry-adjusted next 10 day returns for reference. 
+
+```{r}
+library(ggplot2)
+
+fcf_data_filtered <- fcf_data_filtered |>
+  filter(!Industry == "Diversified")
+
+# Generate box plots of returns by industry
+ggplot(fcf_data_filtered, aes(x=Industry, y=IND_NEXT_10DAY, fill=Industry)) +
+  geom_boxplot() +
+  labs(title="Box Plots of Industry-Adjusted Returns by Next 10 Day Returns by Industry",
+       x="Industry",
+       y="Returns") +
+  theme_minimal() +
+  theme(legend.position="none",  # Remove the legend if color is not necessary
+        axis.text.x = element_text(angle = 45, hjust = 1))  # Tilt the x-axis labels for clarity
+```
+```{r}
+ggplot(fcf_data_filtered, aes(x = IND_NEXT_10DAY)) +
+  geom_histogram(bins = 30, fill = "blue", color = "black") +  # Adjust the number of bins as needed
+  labs(title = "Histogram of IND_NEXT_10DAY Returns",
+       x = "IND_NEXT_10DAY Returns",
+       y = "Frequency") +
+  theme_minimal()
 ```
 
