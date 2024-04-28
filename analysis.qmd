@@ -8,7 +8,7 @@ format: pdf
 
 Free cash flow - or the amount of cash a company generates after accounting for the cash outflows needed to maintain or expand its asset base - is generally seen as a hallmark for a successful company, with value investor William Thorndike commenting "cash flow, not reported earnings, is what determines long-term value." Free cash flow (from here on donned FCF) allows management to reinvest in their business, reduce debt, pay dividends, or establish share buybacks, green flags for investors. In this report, I seek to establish whether there is an association between free cash flow growth and equity returns shortly following, over various time horizons. I also hope to explore whether this effect is strengthened by whether investors value this growth coming from the top or bottom line (such as sales growth or cost cutting), whether the company has reported quality earnings (as opposed to manipulated figures), and whether the company has improved its liquidity position, or its ability to meet short-term and long-term obligations.
 
-The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance. I have chosen a selection of variables from this dataset, using returns over multiple time horizons as my response and using Q/Q growth in revenue, free cash flow, net income, current ratio, and quick ratio, and earnings quality as measured by operating cash flow divided by net income.
+The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance (combined in Python for previous projects). The data includes the following variables:
 
  - *(revenue_growth)*: Q/Q growth in sales/revenue, used to gauge top-line improvements (achieved by selling more product, 
     gaining customers, etc.) and calculated by using a standard percent change formula (left in decimal form).
@@ -32,9 +32,13 @@ library(tidyverse)
 library(tidymodels)
 
 fcf_data <- read.csv("fcf_returns_quarterly_clean.csv")
+
 fcf_data_filtered <- fcf_data |>
-  select(rdq, Industry, bTicker, IND_NEXT_1DAY, IND_NEXT_5DAY, IND_NEXT_10DAY, IND_NEXT_15DAY,
-         fcf_growth, revenue_growth, niq_growth, current_ratio_change, quick_ratio_change, earnings_quality)
+  mutate(fcf_growth = as.double(fcf_growth),
+         revenue_growth = as.double(revenue_growth),
+         niq_growth = as.double(niq_growth),
+         earnings_quality = as.double(earnings_quality))
+
 ```
 
 # Hypotheses
@@ -64,47 +68,23 @@ I viewed the distribution of the other variables using histograms and coverage p
 ```{r}
 summary(fcf_data_filtered)
 ```
-Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/filing issues result in reasonable and interpretable predictor variables. 
+Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/accounting filing issues result in reasonable and interpretable predictor variables. This is done before the models are computed in the methodology section.
 
-The distribution of returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). I have included a histogram of industry-adjusted next 10 day returns for reference. 
+The distribution of returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). 
 
 ```{r}
-library(ggplot2)
-
-fcf_data_filtered <- fcf_data_filtered |>
-  filter(!Industry == "Diversified")
-
-# Generate box plots of returns by industry
-ggplot(fcf_data_filtered, aes(x=Industry, y=IND_NEXT_10DAY, fill=Industry)) +
-  geom_boxplot() +
-  labs(title="Box Plots of Industry-Adjusted Returns by Next 10 Day Returns by Industry",
-       x="Industry",
-       y="Returns") +
-  theme_minimal() +
-  theme(legend.position="none",  # Remove the legend if color is not necessary
-        axis.text.x = element_text(angle = 45, hjust = 1))  # Tilt the x-axis labels for clarity
-```
-```{r}
-ggplot(fcf_data_filtered, aes(x = IND_NEXT_10DAY)) +
+ggplot(fcf_data_filtered, aes(x = NEXT_10DAY)) +
   geom_histogram(bins = 30, fill = "blue", color = "black") +  # Adjust the number of bins as needed
-  labs(title = "Histogram of IND_NEXT_10DAY Returns",
+  labs(title = "Histogram of Next 10 Day Returns",
        x = "IND_NEXT_10DAY Returns",
        y = "Frequency") +
   theme_minimal()
 ```
-
 # Methodology
 
 ```{r}
-
-library(dplyr)
-
 filtered_cleaned_fcf <- fcf_data_filtered |>
-  mutate(across(c(IND_NEXT_1DAY, 
-                  IND_NEXT_5DAY, 
-                  IND_NEXT_10DAY, 
-                  IND_NEXT_15DAY,
-                  fcf_growth, 
+  mutate(across(c(fcf_growth, 
                   revenue_growth, niq_growth, 
                   current_ratio_change,
                   quick_ratio_change, earnings_quality),
@@ -116,13 +96,12 @@ filtered_cleaned_fcf <- fcf_data_filtered |>
 filtered_cleaned_fcf <- filter(filtered_cleaned_fcf, 
                                complete.cases(filtered_cleaned_fcf))
 
-# Print the cleaned dataframe
 filtered_cleaned_fcf
   
 ```
 
 ```{r}
-fcf_model_base <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
+fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
 ```
 
 ```{r}
