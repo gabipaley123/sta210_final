@@ -8,20 +8,20 @@ format: pdf
 
 Free cash flow - or the amount of cash a company generates after accounting for the cash outflows needed to maintain or expand its asset base - is generally seen as a hallmark for a successful company, with value investor William Thorndike commenting "cash flow, not reported earnings, is what determines long-term value." Free cash flow (from here on donned FCF) allows management to reinvest in their business, reduce debt, pay dividends, or establish share buybacks, green flags for investors. In this report, I seek to establish whether there is an association between free cash flow growth and equity returns shortly following, over various time horizons. I also hope to explore whether this effect is strengthened by whether investors value this growth coming from the top or bottom line (such as sales growth or cost cutting), whether the company has reported quality earnings (as opposed to manipulated figures), and whether the company has improved its liquidity position, or its ability to meet short-term and long-term obligations.
 
-The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance. I have chosen a selection of variables from this dataset, using industry-adjusted leading and lagging returns over multiple time horizons as my response and using Q/Q growth in revenue, free cash flow, net income, current ratio, and quick ratio, and earnings quality as measured by operating cash flow divided by net income.
+The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance. I have chosen a selection of variables from this dataset, using returns over multiple time horizons as my response and using Q/Q growth in revenue, free cash flow, net income, current ratio, and quick ratio, and earnings quality as measured by operating cash flow divided by net income.
 
  - *(revenue_growth)*: Q/Q growth in sales/revenue, used to gauge top-line improvements (achieved by selling more product, 
     gaining customers, etc.) and calculated by using a standard percent change formula (left in decimal form).
  - *(fcf_growth)*: Q/Q growth in free cash flow
- - *(niq_growth)*: Q/Q growth in net income, used to gauge bottom-line improvements (improvement in net income holding revenue         constant is achieved through efficiencies, diminishing labor/input costs, etc.)
+ - *(niq_growth)*: Q/Q growth in net income, used to gauge bottom-line improvements (improvement in net income holding revenue constant is achieved through efficiencies, diminishing labor/input costs, etc.)
  - *(current_ratio_change)*: Q/Q growth in current ratio, indicating the company's ability to meet its short term obligations
  - *(quick_ratio_change)*: Q/Q growth in quick ratio, indicating the company's ability to meet its short term obligations but using
     only its most liquid assets (generally considered a stricter metric)
    
- - *(IND_NEXT_1DAY/IND_NEXT_5DAY/IND_NEXT_10DAY)*: Returns achieved in the next 1, 5, and 10 days following rdq (quarter reporting     date)
+ - *(NEXT_1DAY/NEXT_5DAY/NEXT_10DAY)*: Returns achieved in the next 1, 5, and 10 days following rdq (quarter reporting date)
  
  - *(bTicker/cusip)*: Two methods of identifying companies
- - *(rdq)*: Reporting date for the quarter, or the reasonable date that investors received financial information which would           influence subsequent returns
+ - *(rdq)*: Reporting date for the quarter, or the reasonable date that investors received financial information which would influence subsequent returns
  - *(Industry)*: Company industry as per GICS standards
 
 This data set consists of quarterly observations of companies, with each row representing a quarterly financial report made by a company. While this might initially seem like a potential violation of independence (repeated observation of one company), my analysis shows a low correlation between the next 10-day return after one quarter is reported and the return from the previous quarter. This low correlation indicates that, functionally, each quarter we are effectively analyzing information about an entirely different company, which has made independent decisions from the previous quarter. This makes sense — if this principle did not hold, simply investing in companies that had previously performed well would be a straightforward and successful strategy.
@@ -66,7 +66,7 @@ summary(fcf_data_filtered)
 ```
 Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/filing issues result in reasonable and interpretable predictor variables. 
 
-The distribution of industry-adjusted returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). I have included a histogram of industry-adjusted next 10 day returns for reference. 
+The distribution of returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). I have included a histogram of industry-adjusted next 10 day returns for reference. 
 
 ```{r}
 library(ggplot2)
