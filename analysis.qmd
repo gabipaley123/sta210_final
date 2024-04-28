@@ -138,5 +138,46 @@ fcf_model_addtl_factors <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ fcf_growth +
                                   filtered_cleaned_fcf$earnings_quality, data = filtered_cleaned_fcf)
 summary(fcf_model_addtl_factors)
 ```
+```{r}
+fcf_model_ind_interaction_term <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ revenue_growth, data = filtered_cleaned_fcf)
+summary(fcf_model_ind_interaction_term)
+```
+```{r}
+library(ggplot2)
 
+# Make sure to start with an empty data frame with the correct types
+beta_over_time <- data.frame(
+  Year = numeric(),
+  Beta = numeric(),
+  CI_lower = numeric(),
+  CI_upper = numeric(),
+  stringsAsFactors = FALSE # This prevents automatic conversion to factors
+)
+
+# Loop through each year, fit the model, and extract the coefficients and confidence intervals
+for (year in unique_years) {
+  data_subset <- filtered_cleaned_fcf[filtered_cleaned_fcf$year == year, ]
+  model <- lm(IND_NEXT_10DAY ~ revenue_growth, data = data_subset)
+  beta <- coef(model)["revenue_growth"]
+  ci <- confint(model, "revenue_growth", level = 0.95)
+  
+  # Add the results to the data frame without conversion to character
+  beta_over_time <- rbind(beta_over_time, data.frame(Year = as.numeric(year), Beta = as.numeric(beta), 
+                                                     CI_lower = as.numeric(ci[1]), CI_upper = as.numeric(ci[2]), 
+                                                     stringsAsFactors = FALSE))
+}
+
+# Now beta_over_time should have numeric values for 'Beta', 'CI_lower', and 'CI_upper'
+
+ggplot(beta_over_time, aes(x = Year, y = Beta)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper), width = 0.2) +
+  labs(title = "Beta Coefficients over Time",
+       x = "Year",
+       y = "Beta Coefficient") +
+  scale_y_continuous(labels = scales::scientific) +  # Use scientific notation for y-axis labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(angle = 0)) # Make y-axis labels horizontal
+```
 
