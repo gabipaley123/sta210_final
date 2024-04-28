@@ -36,6 +36,12 @@ fcf_data_filtered <- fcf_data |>
   select(rdq, Industry, bTicker, IND_NEXT_1DAY, IND_NEXT_5DAY, IND_NEXT_10DAY, IND_NEXT_15DAY,
          fcf_growth, revenue_growth, niq_growth, current_ratio_change, quick_ratio_change, earnings_quality)
 ```
+
+# Hypotheses
+
+
+
+In my prior experience with financial data, it is important to be disciplined about 
 # Initial Observations and EDA
 
 In my initial analysis, I explore the distribution of FCF growth, focusing on eliminating extreme values caused by zeros, minimal prior-period FCF, and accounting irregularities. By bounding my histogram by the 1st and 99th percentiles, the data reveals a tendency for companies to experience declines in FCF rather than gains. This observation aligns with expectations, as achieving growth in FCF typically reflects effective management, a quality less commonly observed than inefficiency.
@@ -86,4 +92,51 @@ ggplot(fcf_data_filtered, aes(x = IND_NEXT_10DAY)) +
        y = "Frequency") +
   theme_minimal()
 ```
+
+# Methodology
+
+```{r}
+
+library(dplyr)
+
+filtered_cleaned_fcf <- fcf_data_filtered |>
+  mutate(across(c(IND_NEXT_1DAY, 
+                  IND_NEXT_5DAY, 
+                  IND_NEXT_10DAY, 
+                  IND_NEXT_15DAY,
+                  fcf_growth, 
+                  revenue_growth, niq_growth, 
+                  current_ratio_change,
+                  quick_ratio_change, earnings_quality),
+                  ~ifelse(. < quantile(., 0.01, na.rm = TRUE),
+                          quantile(., 0.01, na.rm = TRUE),
+                   ifelse(. > quantile(., 0.99, na.rm = TRUE),
+                           quantile(., 0.99, na.rm = TRUE), .))))
+
+filtered_cleaned_fcf <- filter(filtered_cleaned_fcf, 
+                               complete.cases(filtered_cleaned_fcf))
+
+# Print the cleaned dataframe
+filtered_cleaned_fcf
+  
+```
+
+```{r}
+fcf_model_base <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
+```
+
+```{r}
+tidy(fcf_model_base)
+```
+```{r}
+fcf_model_top_bottom_line <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + filtered_cleaned_fcf$niq_growth, data = filtered_cleaned_fcf)
+summary(fcf_model_top_bottom_line)
+```
+```{r}
+fcf_model_addtl_factors <- lm(filtered_cleaned_fcf$IND_NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + 
+                                  filtered_cleaned_fcf$niq_growth + filtered_cleaned_fcf$current_ratio_change +
+                                  filtered_cleaned_fcf$earnings_quality, data = filtered_cleaned_fcf)
+summary(fcf_model_addtl_factors)
+```
+
 
