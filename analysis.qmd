@@ -158,16 +158,17 @@ While linearity and constant variance are satisfied (the residuals are distribut
 
 # Results
 
+## Base Model
+
 ```{r}
 fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
 ```
 
 ```{r}
 tidy(fcf_model_base)
-
-
-
 ```
+
+## Model Adjusting For Top And Bottom Line
 ```{r}
 fcf_model_top_bottom_line <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + filtered_cleaned_fcf$niq_growth, data = filtered_cleaned_fcf)
 summary(fcf_model_top_bottom_line)
