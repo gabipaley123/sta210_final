@@ -67,7 +67,14 @@ ggplot(fcf_data_filtered, aes(x = fcf_growth)) +
 I viewed the distribution of the other variables using histograms and coverage plots for NA values, but for the purpose of concision, I have included five number summaries for each of the dataset columns. 
 
 ```{r echo = FALSE, warning = FALSE}
-summary(fcf_data_filtered)
+summary(fcf_data_filtered[c("fcf_growth", 
+                            "niq_growth",
+                            "current_ratio_change",
+                            "quick_ratio_change",
+                            "earnings_quality",
+                            "NEXT_1DAY",
+                            "NEXT_5DAY",
+                            "NEXT_10DAY")])
 ```
 Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/accounting filing issues result in reasonable and interpretable predictor variables. This is done before the models are computed in the methodology section. I note that this limits the interpretation to companies which did not have a previous FCF, revenue, niq, or current ratio of 0 or NA, which result in growth figures of - or + infinity. Given more time, I would construct a new metric which diminishes the impact of small base values leading to high growth rates. 
 
@@ -135,7 +142,7 @@ correlation_analysis <- fcf_data_filtered %>%
 print(correlation_analysis)
 ```
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
 model_base_resid <- augment(fcf_model_base)
 ```
@@ -161,40 +168,154 @@ While linearity and constant variance are satisfied (the residuals are distribut
 
 # Results
 
+```{r}
+library(broom)
+library(dplyr)
+library(gt)
+
+run_regressions_and_create_table <- function(data, independent_vars, forecast_days, title) {
+  model_list <- list()
+
+  # Loop through each forecast day and fit a model
+  for (day in forecast_days) {
+    formula <- reformulate(independent_vars, response = day)
+    data_subset <- na.omit(data[ , c(day, independent_vars)])
+    model <- lm(formula, data = data_subset)
+    model_list[[day]] <- tidy(model)
+  }
+
+  # Combine all tidied models into one data frame
+  all_models_df <- bind_rows(model_list, .id = "ForecastDay")
+
+  # Create the gt table
+  gt_table <- gt(all_models_df) |>
+    tab_header(title = title) |>
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_title()
+    ) |>
+    cols_label(
+      ForecastDay = "Forecast Day",
+      term = "Variable",
+      estimate = "Estimate",
+      std.error = "Std. Error",
+      statistic = "Statistic",
+      p.value = "P-Value"
+    ) |>
+    fmt_number(
+      columns = vars(estimate, std.error, statistic, p.value),
+      decimals = 10
+    )
+  
+  return(gt_table)
+}
+
+```
+
+
 ## Base Model
 
 ```{r echo = FALSE, warning = FALSE}
-tidy(fcf_model_base)
+forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+independent_vars <- c("fcf_growth")
+title <- "Evidence of Positive Linear Relationship Between FCF Growth and 5 and 10 Day Returns"
+gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
+
+gt_table
+
 ```
 
 ## Model Adjusting For Top And Bottom Line
 
 ```{r echo = FALSE, warning = FALSE}
-fcf_model_top_bottom_line <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + filtered_cleaned_fcf$niq_growth, data = filtered_cleaned_fcf)
-summary(fcf_model_top_bottom_line)
+forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+independent_vars <- c("fcf_growth", "revenue_growth", "niq_growth")
+title <- "Top Line Growth Shows Significantly Stronger Linear Relationship With Returns than Bottom Line Improvement, Holding FCF Growth Constant"
+gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
+gt_table
 ```
+
 ## Model Adjusting for Liquidity Growth
 
-```{r echo = FALSE, warning = FALSE}
-fcf_model_addtl_factors <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$current_ratio_change,
+```{r echo = FALSE, warning = FALSE, output = FALSE}
+fcf_model_liquidity <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$current_ratio_change,
                               data = filtered_cleaned_fcf)
-tidy(fcf_model_addtl_factors)
+                              
 ```
-##  Industry Interaction Term Model
+
 ```{r echo = FALSE, warning = FALSE}
-fcf_model_ind_interaction_term <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ Industry*fcf_growth, data = filtered_cleaned_fcf)
-tidy(fcf_model_ind_interaction_term)
+independent_vars <- c("fcf_growth", "current_ratio_change")
+title <- "Evidence Of Greater 5 and 10 Day Returns Associated With Improved Liquidity Position, Holding FCF Growth Constant"
+gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
+gt_table
+```
+
+##  Industry Interaction Term Model
+```{r echo = FALSE, warning = FALSE, output = FALSE}
+fcf_model_ind_interaction_term <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ 
+                                       Industry*fcf_growth, data = 
+                                       filtered_cleaned_fcf)
+```
+
+```{r echo = FALSE, warning = FALSE}
+library(broom)
+library(dplyr)
+library(gt)
+
+# Fit the model with an interaction term
+fcf_model_ind_interaction_term <- lm(NEXT_10DAY ~ Industry * fcf_growth, data = filtered_cleaned_fcf)
+
+# Tidy the model and extract only the interaction terms
+tidy_interaction <- tidy(fcf_model_ind_interaction_term) %>%
+  filter(grepl(":", term))  # This selects only the interaction terms
+
+# Now create the gt table
+gt_table <- gt(tidy_interaction) %>%
+  tab_header(title = md("**No Statistically Significant Interactions Detected Between Industry Type and FCF Growth in Predicting Returns**")) |>
+  cols_label(
+    term = "Interaction Term",
+    estimate = "Estimate",
+    std.error = "Std. Error",
+    statistic = "Statistic",
+    p.value = "P-Value"
+  ) %>%
+  fmt_number(
+    columns = vars(estimate, std.error, statistic, p.value),
+    decimals = 6
+  )
+
+gt_table
+
+
 ```
 
 ## Model Adjusting for Earnings Quality
 
-```{r echo = FALSE, warning = FALSE}
-fcf_model_earnings_qual <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + earnings_quality, data = filtered_cleaned_fcf)
-tidy(fcf_model_earnings_qual)
+```{r echo = FALSE, warning = FALSE, output = FALSE}
+fcf_model_earnings_qual <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + 
+                                earnings_quality, data = filtered_cleaned_fcf)
 ```
+
+```{r echo = FALSE, warning = FALSE}
+forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+independent_vars <- c("fcf_growth", "earnings_quality")
+title <- "Top Line Growth Shows Significantly Stronger Linear Relationship With Returns than Bottom Line Improvement, Holding FCF Growth Constant"
+gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
+gt_table
 ```
 
 # Discussion
 
+The regression analysis shows that FCF growth has a statistically significant, positive linear relationship with returns in the next 5 and 10 days following the announcement. The beta coefficients are small (this is true across the entire study), which is consistent with other financial studies where effect sizes are often less pronounced due to noisy data. Notably, the effect does not appear to be statistically significant within the 1-day return period post-reporting. Furthermore, the beta for the 10-day returns is an order of magnitude larger than that for the 5-day returns, suggesting that the impact of FCF growth on returns may grow over time (may take investors time to digest information or could be due to other latent factors).
 
+The study further finds that holding FCF growth constant, there is statistically significant evidence that revenue growth and net income growth have a linear relationship with 1, 5, and 10 day returns. Importantly, the beta coefficient for the revenue growth is significantly larger than that for net income improvement, confirming my hypothesis FCF growth driven by top-line expansion is more strongly correlated with increased returns than bottom line improvements.
 
+Holding FCF growth constant, the study finds that an growth in current ratio and higher earnings quality is associated, on average, with greater 5 and 10 day returns following earnings announcements. However, the earnings quality beta coefficient is orders of magnitude smaller than other variables in this study, and although there is a statistically significant p-value, the practical significance of the metric on returns is negligible relative to others observed. 
+
+Finally, the study finds no compelling statistical evidence that there are interaction effects between industry type and FCF growth in influencing returns in the period following earnings announcement (all associated p-values are >0.05). This implies a degree of uniformity across industries when considering how the market values FCF growth. 
+
+As mentioned previously in the study, there are several limitations to the above work. The models above violate normality, leading to skewed prediction intervals. The metrics used are also rudimentary, to say the least, and exclude companies which have reported 0 for the variables where growth is measured (as this results in infinite values which I have removed). There are also a number of companies with NA values for various variables due to accounting discrepancies, which leads to more data being lost for the model. Economically speaking, I contend that an increase from $0.1 to $1 should not be considered more significant than an expansion from $1,000,000 to $5,000,000, despite growth metrics often suggesting so due to larger percentage increases from smaller bases. In future studies, I would like to consider new metrics which take this into account - possibly considering a shrinkage factor or change in FCF over total assets to normalize results differently. 
+
+I also note that the predictive power of all of the above models is inherently low (as expected given the difficult nature of predicting returns). However, these results can be layered into more sophisticated predictive models, and allow investors to gain a general sense of the relative importance of different metrics.  
+
+Future work is promising. I look forward to researching whether companies which cross from negative to positive FCF experience greater returns, on average, than companies which go from negative to less negative or positive to more positive. I also aim to dive deeper into the study of revenue growth as a metric, given its robust relative predictive power for returns as demonstrated in this study, along with an exploration of how this relationship has evolved over time. 
