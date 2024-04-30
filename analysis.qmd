@@ -176,7 +176,6 @@ library(gt)
 run_regressions_and_create_table <- function(data, independent_vars, forecast_days, title) {
   model_list <- list()
 
-  # Loop through each forecast day and fit a model
   for (day in forecast_days) {
     formula <- reformulate(independent_vars, response = day)
     data_subset <- na.omit(data[ , c(day, independent_vars)])
@@ -184,7 +183,6 @@ run_regressions_and_create_table <- function(data, independent_vars, forecast_da
     model_list[[day]] <- tidy(model)
   }
 
-  # Combine all tidied models into one data frame
   all_models_df <- bind_rows(model_list, .id = "ForecastDay")
 
   # Create the gt table
@@ -262,15 +260,12 @@ library(broom)
 library(dplyr)
 library(gt)
 
-# Fit the model with an interaction term
 fcf_model_ind_interaction_term <- lm(NEXT_10DAY ~ Industry * fcf_growth, data = filtered_cleaned_fcf)
 
-# Tidy the model and extract only the interaction terms
-tidy_interaction <- tidy(fcf_model_ind_interaction_term) %>%
-  filter(grepl(":", term))  # This selects only the interaction terms
+tidy_interaction <- tidy(fcf_model_ind_interaction_term) |>
+  filter(grepl(":", term))
 
-# Now create the gt table
-gt_table <- gt(tidy_interaction) %>%
+gt_table <- gt(tidy_interaction) |>
   tab_header(title = md("**No Statistically Significant Interactions Detected Between Industry Type and FCF Growth in Predicting Returns**")) |>
   cols_label(
     term = "Interaction Term",
@@ -278,7 +273,7 @@ gt_table <- gt(tidy_interaction) %>%
     std.error = "Std. Error",
     statistic = "Statistic",
     p.value = "P-Value"
-  ) %>%
+  ) |>
   fmt_number(
     columns = vars(estimate, std.error, statistic, p.value),
     decimals = 6
