@@ -27,7 +27,7 @@ The data used is sourced from a combination of Bloomberg, Compustat Fundamentals
 
 This data set consists of quarterly observations of companies, with each row representing a quarterly financial report made by a company. While this might initially seem like a potential violation of independence (repeated observation of one company), my analysis shows a low correlation between the next 10-day return after one quarter is reported and the return from the previous quarter. This low correlation indicates that, functionally, each quarter we are effectively analyzing information about an entirely different company, which has made independent decisions from the previous quarter. This makes sense — if this principle did not hold, simply investing in companies that had previously performed well would be a straightforward and successful strategy.
 
-```{r}
+```{r echo = FALSE, warning = FALSE, output = FALSE}
 library(dplyr)
 library(tidyverse)
 library(tidymodels)
@@ -51,7 +51,7 @@ I expect that free cash flow growth will correspond with higher returns, particu
 
 In my initial analysis, I explore the distribution of FCF growth, focusing on eliminating extreme values caused by zeros, minimal prior-period FCF, and accounting irregularities. By bounding my histogram by the 1st and 99th percentiles, the data reveals a tendency for companies to experience declines in FCF rather than gains. This observation aligns with expectations, as achieving growth in FCF typically reflects effective management, a quality less commonly observed than inefficiency.
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 library(ggplot2)
 
 # Histogram of Free Cash Flow Growth with Quantile-based Limits
@@ -66,14 +66,14 @@ ggplot(fcf_data_filtered, aes(x = fcf_growth)) +
 
 I viewed the distribution of the other variables using histograms and coverage plots for NA values, but for the purpose of concision, I have included five number summaries for each of the dataset columns. 
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 summary(fcf_data_filtered)
 ```
 Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/accounting filing issues result in reasonable and interpretable predictor variables. This is done before the models are computed in the methodology section. I note that this limits the interpretation to companies which did not have a previous FCF, revenue, niq, or current ratio of 0 or NA, which result in growth figures of - or + infinity. Given more time, I would construct a new metric which diminishes the impact of small base values leading to high growth rates. 
 
 The distribution of returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). 
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 ggplot(fcf_data_filtered, aes(x = NEXT_10DAY)) +
   geom_histogram(bins = 30, fill = "blue", color = "black") +  # Adjust the number of bins as needed
   labs(title = "Histogram of Next 10 Day Returns",
@@ -83,7 +83,7 @@ ggplot(fcf_data_filtered, aes(x = NEXT_10DAY)) +
 ```
 # Methodology and Assumptions
 
-```{r echo = FALSE, warning = FALSE}
+```{r echo = FALSE, warning = FALSE, output = FALSE}
 filtered_cleaned_fcf <- fcf_data_filtered |>
   mutate(across(c(fcf_growth, 
                   revenue_growth, niq_growth, 
@@ -112,7 +112,7 @@ Extended Models: To refine our understanding and control for additional financia
 
 In order to assess the independence assumption necessary for a linear regression, I have performed a correlation analysis to investigate whether returns following a previous quarter's announcement are indicative of returns in the subsequent quarter. The analysis revealed minimal correlation for 1DAY, 5DAY, and 10DAY returns, suggesting that these returns are largely independent from one quarter to the next. 
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 fcf_data_filtered <- fcf_data_filtered %>%
   arrange(bTicker, rdq) %>%
   group_by(bTicker) %>%
@@ -133,13 +133,16 @@ correlation_analysis <- fcf_data_filtered %>%
 
 # View the correlation coefficients
 print(correlation_analysis)
+```
 
+```{r}
+fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
 model_base_resid <- augment(fcf_model_base)
 ```
 
 Residual and quantile-quantile plots were utilized to evaluate the assumptions of linearity, constant variance, and normality in our base regression model of returns versus FCF growth. While the assumptions of linearity and constant variance are generally met, the normality assumption is somewhat violated, particularly at the tails of the distribution as evidenced in the Q/Q plot. This suggests that while linear regression is suitable, caution should be exercised regarding the prediction intervals due to potential deviations from normality.
 
-```{r}
+```{r echo = FALSE, warning = FALSE}
 ggplot(data = model_base_resid, aes(x = .fitted, y = .resid)) +
           geom_point() +
           labs(x = "Fitted values", y = "Residuals",
@@ -160,29 +163,38 @@ While linearity and constant variance are satisfied (the residuals are distribut
 
 ## Base Model
 
-```{r}
-fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filtered_cleaned_fcf)
-```
-
-```{r}
+```{r echo = FALSE, warning = FALSE}
 tidy(fcf_model_base)
 ```
 
 ## Model Adjusting For Top And Bottom Line
-```{r}
+
+```{r echo = FALSE, warning = FALSE}
 fcf_model_top_bottom_line <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + filtered_cleaned_fcf$niq_growth, data = filtered_cleaned_fcf)
 summary(fcf_model_top_bottom_line)
 ```
+## Model Adjusting for Liquidity Growth
 
-```{r}
-fcf_model_addtl_factors <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$revenue_growth + 
-                                  filtered_cleaned_fcf$niq_growth + filtered_cleaned_fcf$current_ratio_change +
-                                  filtered_cleaned_fcf$earnings_quality, data = filtered_cleaned_fcf)
-summary(fcf_model_addtl_factors)
+```{r echo = FALSE, warning = FALSE}
+fcf_model_addtl_factors <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + filtered_cleaned_fcf$current_ratio_change,
+                              data = filtered_cleaned_fcf)
+tidy(fcf_model_addtl_factors)
 ```
-```{r}
-fcf_model_ind_interaction_term <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ revenue_growth, data = filtered_cleaned_fcf)
-summary(fcf_model_ind_interaction_term)
+##  Industry Interaction Term Model
+```{r echo = FALSE, warning = FALSE}
+fcf_model_ind_interaction_term <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ Industry*fcf_growth, data = filtered_cleaned_fcf)
+tidy(fcf_model_ind_interaction_term)
 ```
+
+## Model Adjusting for Earnings Quality
+
+```{r echo = FALSE, warning = FALSE}
+fcf_model_earnings_qual <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth + earnings_quality, data = filtered_cleaned_fcf)
+tidy(fcf_model_earnings_qual)
+```
+```
+
+# Discussion
+
 
 
