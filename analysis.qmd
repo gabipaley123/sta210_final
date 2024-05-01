@@ -45,7 +45,7 @@ fcf_data_filtered <- fcf_data |>
 
 # Hypotheses
 
-I expect that free cash flow growth will correspond with higher returns, particularly in the short term. Growth driven by revenue—indicative of strategic expansion—is likely to have a more substantial impact on returns than that driven by net income increases, when FCF growth is held steady. Furthermore, companies enhancing their liquidity and maintaining high earnings quality—evidenced by strong cash flow relative to net income—are also anticipated to yield better returns, given these traits reflect prudent management and sound financial practices. Finally, I hypothesize that the beneficial effects of robust FCF are largely consistent across different industries. 
+The author expects that free cash flow growth will correspond with higher returns, particularly in the short term. Growth driven by revenue—indicative of strategic expansion—is likely to have a more substantial impact on returns than that driven by net income increases, when FCF growth is held steady. Furthermore, companies enhancing their liquidity and maintaining high earnings quality—evidenced by strong cash flow relative to net income—are also anticipated to yield better returns, given these traits reflect prudent management and sound financial practices. Finally, I hypothesize that the beneficial effects of robust FCF are largely consistent across different industries. 
 
 # Initial Observations and EDA
 
@@ -204,7 +204,7 @@ run_regressions_and_create_table <- function(data, independent_vars, forecast_da
     ) |>
     fmt_number(
       columns = vars(estimate, std.error, statistic, p.value),
-      decimals = 10
+      decimals = 5
     )
   
   return(gt_table)
@@ -278,7 +278,7 @@ gt_table <- gt(tidy_interaction) |>
   ) |>
   fmt_number(
     columns = vars(estimate, std.error, statistic, p.value),
-    decimals = 6
+    decimals = 5
   )
 
 gt_table
