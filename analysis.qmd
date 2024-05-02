@@ -7,19 +7,18 @@ execute:
 format: pdf
 ---
 
-# Introduction
+# Introduction and Data
 
 Free cash flow - or the amount of cash a company generates after accounting for the cash outflows needed to maintain or expand its asset base - is generally seen as a hallmark for a successful company, with value investor William Thorndike commenting "cash flow, not reported earnings, is what determines long-term value." Free cash flow (from here on donned FCF) allows management to reinvest in their business, reduce debt, pay dividends, or establish share buybacks, green flags for investors. In this report, I seek to establish whether there is an association between free cash flow growth and equity returns shortly following, over various time horizons. I also hope to explore whether this effect is strengthened by whether this growth comes from the top or bottom line (such as sales growth or cost cutting), whether the company has reported quality earnings (as opposed to manipulated figures), and whether the company has improved its liquidity position, or its ability to meet short-term and long-term obligations. I will also explore whether these effects vary across different industries. 
 
 The data used is sourced from a combination of Bloomberg, Compustat Fundamentals Quarterly (via Wharton Research) and Yahoo Finance (processed in Python for previous projects). The data includes the following variables:
 
- - *(revenue_growth)*: Q/Q growth in sales/revenue, used to gauge top-line improvements (achieved by selling more product, 
-    gaining customers, etc.) and calculated by using a standard percent change formula (left in decimal form).
+ - *(revenue_growth)*: Q/Q growth in sales/revenue, used to gauge top-line improvements (achieved by selling more product, gaining customers, etc.) and calculated by using a standard percent change formula (left in decimal form).
  - *(fcf_growth)*: Q/Q growth in free cash flow
- - *(niq_growth)*: Q/Q growth in net income, used to gauge bottom-line improvements (improvement in net income holding revenue constant is achieved through efficiencies, diminishing labor/input costs, etc.)
+ - *(niq_growth)*: Q/Q growth in net income, used to gauge bottom-line improvements (improvement in net income holding revenue constant is achieved through increased efficiency, diminishing labor/input costs, etc.)
  - *(current_ratio_change)*: Q/Q growth in current ratio, indicating the company's ability to meet its short term obligations
    
- - *(NEXT_1DAY/NEXT_5DAY/NEXT_10DAY)*: Returns achieved in the next 1, 5, and 10 days following rdq (quarter reporting date)
+ - *(NEXT_2DAY/NEXT_5DAY/NEXT_10DAY)*: Returns achieved in the next 2, 5, and 10 days following rdq (quarter reporting date)
  
  - *(bTicker/cusip)*: Two methods of identifying companies
  - *(rdq)*: Reporting date for the quarter, or the reasonable date that investors received financial information which would influence subsequent returns
@@ -72,7 +71,7 @@ summary(fcf_data_filtered[c("fcf_growth",
                             "current_ratio_change",
                             "quick_ratio_change",
                             "earnings_quality",
-                            "NEXT_1DAY",
+                            "NEXT_2DAY",
                             "NEXT_5DAY",
                             "NEXT_10DAY")])
 ```
@@ -106,9 +105,9 @@ filtered_cleaned_fcf <- filter(filtered_cleaned_fcf,
   
 ```
 
-This study employs linear and multiple regression analyses to address the research questions concerning the relationship between free cash flow growth and short-term equity returns. The dependent variables in our models are the next-day (NEXT_1DAY), next five-day (NEXT_5DAY), and next ten-day (NEXT_10DAY) equity returns. Each model progressively incorporates additional explanatory variables and controls to isolate the effects of various financial metrics on these returns.
+This study employs linear and multiple regression analyses to address the research questions concerning the relationship between free cash flow growth and short-term equity returns. The dependent variables in our models are the next-day (NEXT_2DAY), next five-day (NEXT_5DAY), and next ten-day (NEXT_10DAY) equity returns. Each model progressively incorporates additional explanatory variables and controls to isolate the effects of various financial metrics on these returns.
 
-Base Model: Initially, a simple linear regression model was fitted with NEXT_1DAY, NEXT_5DAY, and NEXT_10DAY returns as dependent variables and free cash flow (FCF) growth as the independent variable. This model serves as a baseline to understand the unadjusted effect of FCF growth on equity returns.
+Base Model: Initially, a simple linear regression model was fitted with NEXT_2DAY, NEXT_5DAY, and NEXT_10DAY returns as dependent variables and free cash flow (FCF) growth as the independent variable. This model serves as a baseline to understand the unadjusted effect of FCF growth on equity returns.
 
 Extended Models: To refine our understanding and control for additional financial performance indicators, several extended models were constructed:
 
@@ -117,14 +116,14 @@ Extended Models: To refine our understanding and control for additional financia
 - Earnings Quality: FCF growth was also analyzed in conjunction with a measure of earnings quality - measured as the ratio of operating cash flow to net income. This model tests whether the quality of earnings affects the strength of the correlation between FCF growth and subsequent stock returns.
 - Industry Interaction: Finally, an interaction term between FCF growth and company industry was included to explore whether the effect of FCF growth varies across different sectors. 
 
-While the data measures information about the same firms over time, which may initially seem to violate the independence assumption due to repeated observations of a single company, the analysis shows a low correlation between the next 1, 5, and 10-day returns after one quarter is reported and the return from the previous quarter. This low correlation suggests that each quarter we are effectively analyzing information about an entirely different company, which has made independent decisions from the previous quarter. If this principle did not hold, simply investing in companies that had previously performed well would be a straightforward and successful strategy. 
+While the data measures information about the same firms over time, which may initially seem to violate the independence assumption due to repeated observations of a single company, the analysis shows a low correlation between the next 2, 5, and 10-day returns after one quarter is reported and the return from the previous quarter. This low correlation suggests that each quarter we are effectively analyzing information about an entirely different company, which has made independent decisions from the previous quarter. If this principle did not hold, simply investing in companies that had previously performed well would be a straightforward and successful strategy. 
 
 ```{r echo = FALSE, warning = FALSE}
 fcf_data_filtered <- fcf_data_filtered %>%
   arrange(bTicker, rdq) %>%
   group_by(bTicker) %>%
   mutate(
-    PREV_1DAY_OBS = lag(NEXT_1DAY),
+    PREV_2DAY_OBS = lag(NEXT_2DAY),
     PREV_5DAY_OBS = lag(NEXT_5DAY),
     PREV_10DAY_OBS = lag(NEXT_10DAY)
   ) %>%
@@ -133,7 +132,7 @@ fcf_data_filtered <- fcf_data_filtered %>%
 # Calculating correlation and testing independence
 correlation_analysis <- fcf_data_filtered %>%
   summarise(
-    Cor_1DAY = cor(NEXT_1DAY, PREV_1DAY_OBS, use = "complete.obs"),
+    Cor_2DAY = cor(NEXT_2DAY, PREV_2DAY_OBS, use = "complete.obs"),
     Cor_5DAY = cor(NEXT_5DAY, PREV_5DAY_OBS, use = "complete.obs"),
     Cor_10DAY = cor(NEXT_10DAY, PREV_10DAY_OBS, use = "complete.obs")
   )
@@ -149,7 +148,7 @@ fcf_model_base <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth, data = filter
 model_base_resid <- augment(fcf_model_base)
 ```
 
-Residual and quantile-quantile plots were utilized to evaluate the assumptions of linearity, constant variance, and normality in our base regression model of returns versus FCF growth. While the assumptions of linearity and constant variance are generally met, the normality assumption is somewhat violated, particularly at the tails of the distribution as evidenced in the Q/Q plot. This suggests that while linear regression is suitable, caution should be exercised regarding the prediction intervals due to potential deviations from normality.
+Residual and quantile-quantile plots were utilized to evaluate the assumptions of linearity, constant variance, and normality in our base regression model of returns versus FCF growth. 
 
 ```{r echo = FALSE, warning = FALSE}
 ggplot(data = model_base_resid, aes(x = .fitted, y = .resid)) +
@@ -166,7 +165,7 @@ ggplot(data = model_base_resid, aes(sample = .resid)) +
                   title = "Evidence of non-normality of residuals")
                   
 ```
-While linearity and constant variance are satisfied (the residuals are distributed symmetrically along the horizontal axis with even spread along all fitted values), normality is violated to some degree, as the sample quantiles deviate from the theoretical quantiles at the tails of the Q/Q plot. Even given this violation, it seems reasonable to use a linear regression, with the caveat that the model may result in invalid prediction intervals as a result of the normality assumption being violated. As a note, the presence of vertical lines in the plot of constant variance, indicative of the clipping of predictor variables, is a notable artifact affecting the visual assessment of variance. It's important to acknowledge that this feature is consistent across all regression models utilized in this study, suggesting a systematic influence on our findings.
+While linearity is satisfied (with the residuals symmetrically distributed along the horizontal axis), normality is somewhat violated, as evidenced by the sample quantiles deviating from the theoretical quantiles at the tails of the Q-Q plot. Additionally, there is a clear violation of constant variance. Despite these violations, it may still be reasonable to use a linear regression model. However, it is important to note that the violations of the normality and constant variance assumptions could lead to unreliable prediction intervals and potentially invalid inference, such as incorrect p-values and confidence intervals. As a note, the presence of vertical lines in the plot of constant variance, indicative of the clipping of predictor variables, is a notable artifact affecting the visual assessment of variance. It's important to acknowledge that this feature is consistent across all regression models utilized in this study, suggesting a systematic influence on our findings.
 
 # Results
 
@@ -216,7 +215,7 @@ run_regressions_and_create_table <- function(data, independent_vars, forecast_da
 ## Base Model
 
 ```{r echo = FALSE, warning = FALSE}
-forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+forecast_days <- c("NEXT_2DAY", "NEXT_5DAY", "NEXT_10DAY")
 independent_vars <- c("fcf_growth")
 title <- "Evidence of Positive Linear Relationship Between FCF Growth and 5 and 10 Day Returns"
 gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
@@ -228,7 +227,7 @@ gt_table
 ## Model Adjusting For Top And Bottom Line
 
 ```{r echo = FALSE, warning = FALSE}
-forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+forecast_days <- c("NEXT_2DAY", "NEXT_5DAY", "NEXT_10DAY")
 independent_vars <- c("fcf_growth", "revenue_growth", "niq_growth")
 title <- "Top Line Growth Shows Significantly Stronger Linear Relationship With Returns than Bottom Line Improvement, Holding FCF Growth Constant"
 gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
@@ -294,7 +293,7 @@ fcf_model_earnings_qual <- lm(filtered_cleaned_fcf$NEXT_10DAY ~ fcf_growth +
 ```
 
 ```{r echo = FALSE, warning = FALSE}
-forecast_days <- c("NEXT_1DAY", "NEXT_5DAY", "NEXT_10DAY")
+forecast_days <- c("NEXT_2DAY", "NEXT_5DAY", "NEXT_10DAY")
 independent_vars <- c("fcf_growth", "earnings_quality")
 title <- "Top Line Growth Shows Significantly Stronger Linear Relationship With Returns than Bottom Line Improvement, Holding FCF Growth Constant"
 gt_table <- run_regressions_and_create_table(filtered_cleaned_fcf, independent_vars, forecast_days, title)
@@ -303,15 +302,15 @@ gt_table
 
 # Discussion
 
-The regression analysis shows that FCF growth has a statistically significant, positive linear relationship with returns in the next 5 and 10 days following the announcement. The beta coefficients are small (this is true across the entire study), which is consistent with other financial studies where effect sizes are often less pronounced due to noisy data. Notably, the effect does not appear to be statistically significant within the 1-day return period post-reporting. Furthermore, the beta for the 10-day returns is an order of magnitude larger than that for the 5-day returns, suggesting that the impact of FCF growth on returns may grow over time (may take investors time to digest information or could be due to other latent factors).
+The regression analysis shows that FCF growth has a statistically significant, positive linear relationship with returns in the next 2, 5, and 10 days following the announcement. The beta coefficients are small (this is true across the entire study), which is consistent with other financial studies where effect sizes are often less pronounced due to noisy data. Notably, the effect appears to have a larger beta statistically within the 2-day return period post-reporting, which is indicative of buying/selling activity shortly following earnings announcements.
 
-The study further finds that holding FCF growth constant, there is statistically significant evidence that revenue growth and net income growth have a linear relationship with 1, 5, and 10 day returns. Importantly, the beta coefficient for the revenue growth is significantly larger than that for net income improvement, confirming my hypothesis FCF growth driven by top-line expansion is more strongly correlated with increased returns than bottom line improvements.
+The study further finds that holding FCF growth constant, there is statistically significant evidence that revenue growth and net income growth have a linear relationship with 2, 5, and 10 day returns. Importantly, the beta coefficient for the revenue growth is significantly larger than that for net income improvement, confirming my hypothesis FCF growth driven by top-line expansion is more strongly correlated with increased returns than bottom line improvements.
 
-Holding FCF growth constant, the study finds that an growth in current ratio and higher earnings quality is associated, on average, with greater 5 and 10 day returns following earnings announcements. However, the earnings quality beta coefficient is orders of magnitude smaller than other variables in this study, and although there is a statistically significant p-value, the practical significance of the metric on returns is negligible relative to others observed. 
+Holding FCF growth constant, the study finds that an growth in current ratio and higher earnings quality is associated, on average, with greater 2, 5 and 10 day returns following earnings announcements. However, the earnings quality beta coefficient is orders of magnitude smaller than other variables in this study, and although there is a statistically significant associated p-value with the metric, the practical significance for predicting returns is negligible relative to other independent variables observed. 
 
-Finally, the study finds no compelling statistical evidence that there are interaction effects between industry type and FCF growth in influencing returns in the period following earnings announcement (all associated p-values are >0.05). This implies a degree of uniformity across industries when considering how the market values FCF growth. 
+Finally, the study finds no compelling statistical evidence that there are interaction effects between industry type and FCF growth in influencing returns in the period following earnings announcement (all associated p-values are >0.05). This implies a degree of uniformity across industries when considering how the market values FCF growth.
 
-As mentioned previously in the study, there are several limitations to the above work. The models above violate normality, leading to skewed prediction intervals. The metrics used are also rudimentary, to say the least, and exclude companies which have reported 0 for the variables where growth is measured (as this results in infinite values which were removed). There are also a number of companies with NA values for various variables due to accounting discrepancies, which leads to more data being lost for the model. Economically speaking, there may be reason that an increase from $0.1 to $1 should not be considered more significant than an expansion from $1,000,000 to $5,000,000, despite growth metrics often suggesting so due to larger percentage increases from smaller bases. In future studies, it would be important to consider new metrics which take this into account - possibly considering a shrinkage factor or change in FCF over total assets to normalize results differently. 
+As mentioned previously in the study, there are several limitations to the above work. The models above violate normality and constant variables, leading to skewed prediction intervals and statistical inference (some of the p-values I cited above may not be fully accurate). The metrics used are also rudimentary, to say the least, and exclude companies which have reported 0 for the variables where growth is measured (as this results in infinite values which were removed). There are also a number of companies with NA values for various variables due to accounting discrepancies, which leads to more data being lost for the model. Economically speaking, there may be reason that an increase from $0.1 to $1 should not be considered more significant than an expansion from $1,000,000 to $5,000,000, despite growth metrics often suggesting so due to larger percentage increases from smaller bases. In future studies, it would be important to consider new metrics which take this into account - possibly considering a shrinkage factor or change in FCF over total assets to normalize results differently. 
 
 The predictive power of the models in this study is inherently low (as expected given the difficult nature of predicting returns). R2 values have been excluded as they are close to 0. However, these results can be layered into more sophisticated predictive models, and allow investors to gain a general sense of the relative importance of different metrics.  
 
