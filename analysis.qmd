@@ -65,16 +65,52 @@ ggplot(fcf_data_filtered, aes(x = fcf_growth)) +
 
 I viewed the distribution of the other variables using histograms and coverage plots for NA values, but for the purpose of concision, I have included five number summaries for each of the dataset columns. 
 
-```{r echo = FALSE, warning = FALSE}
-summary(fcf_data_filtered[c("fcf_growth", 
-                            "niq_growth",
-                            "current_ratio_change",
-                            "quick_ratio_change",
-                            "earnings_quality",
-                            "NEXT_2DAY",
-                            "NEXT_5DAY",
-                            "NEXT_10DAY")])
+```{r echo = FALSE, warning = FALSE, output = FALSE}
+
+summary_stats <- summary(fcf_data_filtered[c("fcf_growth", 
+                                             "niq_growth",
+                                             "current_ratio_change",
+                                             "quick_ratio_change",
+                                             "earnings_quality",
+                                             "NEXT_2DAY",
+                                             "NEXT_5DAY",
+                                             "NEXT_10DAY")])
 ```
+
+```{r}
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(tidyr)
+
+library(knitr)
+library(kableExtra)
+
+# Creating a data frame with statistics as rows and variables as columns
+summary_stats <- data.frame(
+  Statistic = c("Min", "1st Q.", "Median", "Mean", "3rd Q.", "Max", "NA's"),
+  fcf_growth = c("-2.44e+17", "-2.00", "-1.00", "Inf", "0.00", "Inf", "10673"),
+  niq_growth = c("-11935.00", "-0.54", "-0.04", "Inf", "0.28", "Inf", "2512"),
+  current_ratio_change = c("-0.98", "-0.08", "0.00", "Inf", "0.08", "Inf", "58977"),
+  quick_ratio_change = c("-0.98", "-0.10", "0.00", "Inf", "0.09", "Inf", "63782"),
+  earnings_quality = c("-59598.62", "-1.61", "0.93", "Inf", "2.26", "Inf", "6851"),
+  NEXT_2DAY = c("-0.28", "-0.03", "0.00", "0.00", "0.03", "0.28", "0"),
+  NEXT_5DAY = c("-0.42", "-0.04", "0.00", "0.00", "0.04", "0.48", "0"),
+  NEXT_10DAY = c("-0.54", "-0.05", "0.00", "0.00", "0.05", "0.62", "0")
+)
+
+# Transpose the data frame to swap rows and columns
+transposed_stats <- t(summary_stats)
+colnames(transposed_stats) <- transposed_stats[1,]
+transposed_stats <- transposed_stats[-1,]
+
+# Create the table using kable
+kable(transposed_stats, format = "html", caption = "Summary Statistics for Financial Metrics Show Anomalies") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+
+```
+
 Clipping the top and bottom percentile values and removing NaN values caused by Compustat discrepancies/accounting filing issues result in reasonable and interpretable predictor variables. This is done before the models are computed in the methodology section. I note that this limits the interpretation to companies which did not have a previous FCF, revenue, niq, or current ratio of 0 or NA, which result in growth figures of - or + infinity. Given more time, I would construct a new metric which diminishes the impact of small base values leading to high growth rates. 
 
 The distribution of returns is also somewhat expected. The data is normally distributed around 0 with strong outperformers and underperformers at the tails (more extreme and rare events lead to more volatility in stock price). 
